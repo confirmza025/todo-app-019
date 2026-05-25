@@ -9,7 +9,7 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD,
 });
 
-// ทดสอบการเชื่อมต่อเมื่อ import module นี้
+// ทดสอบการเชื่อมต่อเมื่อ import module นี้ครับ
 pool.query('SELECT NOW()', (err, res) => {
   if (err) {
     console.error('❌ DB connection failed:', err.message);
