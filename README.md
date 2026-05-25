@@ -41,7 +41,7 @@ cd backend && npm install
 
 ### 6. สร้างไฟล์ backend/.env
 ```
-DB_HOST=localhost
+DB_HOST=localhost,
 DB_PORT=5432
 DB_NAME=tododb
 DB_USER=todouser
