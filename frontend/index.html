@@ -70,7 +70,7 @@
     }
 
     async function deleteTodo(id) {
-      if (!confirm('ลบงานนี้?')) return;
+      if (!confirm('ลบงานนี้หรือไม่?')) return;
       await fetch(`${API}/todos/${id}`, { method: 'DELETE' });
       fetchTodos();
     }
