@@ -59,7 +59,7 @@ app.patch('/api/todos/:id', async (req, res) => {
   }
 });
 
-// ─── DELETE /api/todos/:id — ลบ Todo ──────────────────────
+// ─── DELETE /api/todos/:id — ลบ. Todo ──────────────────────
 app.delete('/api/todos/:id', async (req, res) => {
   const { id } = req.params;
   try {
