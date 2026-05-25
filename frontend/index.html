@@ -9,17 +9,32 @@
     body { font-family: "Segoe UI", sans-serif; background: #f0f4f8; display: flex; justify-content: center; padding: 2rem; }
     .container { background: white; border-radius: 12px; padding: 2rem; width: 100%; max-width: 600px; box-shadow: 0 2px 16px rgba(0,0,0,.08); height: fit-content; }
     h1 { font-size: 1.5rem; margin-bottom: 1.5rem; color: #1a1a2e; }
+
     .add-form { display: flex; gap: .5rem; margin-bottom: 1.5rem; }
     .add-form input { flex: 1; padding: .6rem 1rem; border: 1px solid #ccc; border-radius: 8px; font-size: 1rem; }
     .add-form button { padding: .6rem 1.2rem; background: #2E75B6; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; }
     .add-form button:hover { background: #1a5a99; }
-    .todo-item { display: flex; align-items: center; gap: .75rem; padding: .75rem; border-bottom: 1px solid #eee; }
+
+    .todo-item { border-bottom: 1px solid #eee; padding: .75rem 0; }
     .todo-item:last-child { border-bottom: none; }
-    .todo-item input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+
+    .view-area { display: flex; align-items: center; gap: .75rem; }
+    .view-area input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; }
     .todo-title { flex: 1; font-size: 1rem; }
     .todo-title.done { text-decoration: line-through; color: #999; }
+
+    .btn-group { display: flex; gap: .4rem; flex-shrink: 0; }
+    .edit-btn { background: #f6ad55; color: white; border: none; border-radius: 6px; padding: .3rem .7rem; cursor: pointer; font-size: .85rem; }
+    .edit-btn:hover { background: #dd6b20; }
     .delete-btn { background: #e53e3e; color: white; border: none; border-radius: 6px; padding: .3rem .7rem; cursor: pointer; font-size: .85rem; }
     .delete-btn:hover { background: #c0392b; }
+
+    .edit-area { display: none; align-items: center; gap: .4rem; }
+    .edit-area input { flex: 1; padding: .4rem .7rem; border: 1.5px solid #2E75B6; border-radius: 6px; font-size: 1rem; outline: none; }
+    .save-btn { background: #38a169; color: white; border: none; border-radius: 6px; padding: .3rem .7rem; cursor: pointer; font-size: .85rem; }
+    .save-btn:hover { background: #276749; }
+    .cancel-btn { background: #a0aec0; color: white; border: none; border-radius: 6px; padding: .3rem .7rem; cursor: pointer; font-size: .85rem; }
+    .cancel-btn:hover { background: #718096; }
   </style>
 </head>
 <body>
@@ -31,8 +46,11 @@
     </div>
     <div id="todo-list">กำลังโหลด...</div>
   </div>
+
   <script>
     const API = 'http://localhost:3001/api';
+    // เก็บ title ไว้ใน JS แทนการฝังใน onclick attribute โดยตรง
+    const todoTitles = {};
 
     async function fetchTodos() {
       const res = await fetch(`${API}/todos`);
@@ -40,15 +58,72 @@
       renderTodos(data);
     }
 
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
     function renderTodos(todos) {
       const list = document.getElementById('todo-list');
-      if (todos.length === 0) { list.innerHTML = '<p style="color:#999">ยังไม่มีงาน</p>'; return; }
+      if (todos.length === 0) {
+        list.innerHTML = '<p style="color:#999">ยังไม่มีงาน</p>';
+        return;
+      }
+      todos.forEach(t => { todoTitles[t.id] = t.title; });
       list.innerHTML = todos.map(t => `
-        <div class="todo-item">
-          <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTodo(${t.id})" />
-          <span class="todo-title ${t.completed ? 'done' : ''}">${t.title}</span>
-          <button class="delete-btn" onclick="deleteTodo(${t.id})">ลบ</button>
-        </div>`).join('');
+        <div class="todo-item" id="item-${t.id}">
+          <div class="view-area">
+            <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTodo(${t.id})" />
+            <span class="todo-title ${t.completed ? 'done' : ''}">${escapeHtml(t.title)}</span>
+            <div class="btn-group">
+              <button class="edit-btn" onclick="startEdit(${t.id})">แก้ไข</button>
+              <button class="delete-btn" onclick="deleteTodo(${t.id})">ลบ</button>
+            </div>
+          </div>
+          <div class="edit-area" id="edit-area-${t.id}">
+            <input type="text" id="edit-input-${t.id}" onkeydown="handleEditKey(event, ${t.id})" />
+            <button class="save-btn" onclick="saveEdit(${t.id})">บันทึก</button>
+            <button class="cancel-btn" onclick="cancelEdit(${t.id})">ยกเลิก</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function startEdit(id) {
+      const item = document.getElementById(`item-${id}`);
+      item.querySelector('.view-area').style.display = 'none';
+      const editArea = document.getElementById(`edit-area-${id}`);
+      editArea.style.display = 'flex';
+      const input = document.getElementById(`edit-input-${id}`);
+      input.value = todoTitles[id] || '';
+      input.focus();
+      input.select();
+    }
+
+    function cancelEdit(id) {
+      const item = document.getElementById(`item-${id}`);
+      item.querySelector('.view-area').style.display = 'flex';
+      document.getElementById(`edit-area-${id}`).style.display = 'none';
+    }
+
+    function handleEditKey(e, id) {
+      if (e.key === 'Enter') saveEdit(id);
+      if (e.key === 'Escape') cancelEdit(id);
+    }
+
+    async function saveEdit(id) {
+      const input = document.getElementById(`edit-input-${id}`);
+      const title = input.value.trim();
+      if (!title) return;
+      await fetch(`${API}/todos/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title })
+      });
+      fetchTodos();
     }
 
     async function addTodo() {
@@ -70,12 +145,15 @@
     }
 
     async function deleteTodo(id) {
-      if (!confirm('ลบงานนี้หรือไม่?')) return;
+      if (!confirm('ลบงานนี้?')) return;
       await fetch(`${API}/todos/${id}`, { method: 'DELETE' });
       fetchTodos();
     }
 
-    document.getElementById('new-todo').addEventListener('keydown', e => { if (e.key === 'Enter') addTodo(); });
+    document.getElementById('new-todo').addEventListener('keydown', e => {
+      if (e.key === 'Enter') addTodo();
+    });
+
     fetchTodos();
   </script>
 </body>

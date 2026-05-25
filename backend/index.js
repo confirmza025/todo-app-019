@@ -59,7 +59,7 @@ app.patch('/api/todos/:id', async (req, res) => {
   }
 });
 
-// ─── DELETE /api/todos/:id — ลบ. Todo ──────────────────────
+// ─── DELETE /api/todos/:id — ลบ Todo ──────────────────────
 app.delete('/api/todos/:id', async (req, res) => {
   const { id } = req.params;
   try {
@@ -75,6 +75,27 @@ app.delete('/api/todos/:id', async (req, res) => {
   }
 });
 
+// ─── PUT /api/todos/:id — แก้ไข title ──────────────────────
+app.put('/api/todos/:id', async (req, res) => {
+  const { id } = req.params;
+  const { title } = req.body;
+  if (!title || title.trim() === '') {
+    return res.status(400).json({ error: 'title is required' });
+  }
+  try {
+    const result = await pool.query(
+      'UPDATE todos SET title = $1 WHERE id = $2 RETURNING *',
+      [title.trim(), id]
+    );
+    if (result.rows.length === 0)
+      return res.status(404).json({ error: 'not found' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Backend running at http://localhost:${PORT}`);
 });
+
